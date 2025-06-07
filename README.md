@@ -9,8 +9,8 @@ Get all records from https://www.ncbi.nlm.nih.gov with filters, flags, and speci
 - Search Query can support Regular Expressions for more specific and advanced database searching.
 
 Search queries are based from NCBI's e-utilities or PubMed syntax (AND, NOT, OR). E.g:  
-`Human papillomavirus AND (E6[Title] OR E7[Title]) NOT partial[Title]`  
-`Gammapapillomavirus NOT (E1[Title] OR E7[Title])`  
+`Human papillomavirus AND (E6[Title] OR E7[Title]) NOT partial[Title] -v -o HPVRecords.txt -s strain`  
+`Gammapapillomavirus NOT (E1[Title] OR E7[Title]) -o GHPV_Records.txt`  
 
 | Operator | Function                                   |
 | -------- | ------------------------------------------ |
@@ -37,7 +37,8 @@ Search queries are based from NCBI's e-utilities or PubMed syntax (AND, NOT, OR)
 | `"`      | Exact phrase (e.g. "gene therapy")               |
 | `:`      | Date range (e.g. 2020:2023[PDAT])                |
 
-Example output:
+
+Example record output:
 
 ```
 (accession) Accession: VE6_HPV94
