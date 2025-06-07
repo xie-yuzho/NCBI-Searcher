@@ -1,21 +1,23 @@
 # NCBI-Searcher
 Get all records from https://www.ncbi.nlm.nih.gov with filters, flags, and special functions to make scraping the NCBI NLM databases easier.
 
-[SQ] Search Query Flags:
--v                 Verbose mode
--o [filename]      Set output file (default: records.txt)
--j                 Output as JSON instead of plain text
--s [field]         Split output files by descriptor field (e.g., strain)
--c [cred_string]   Credentials (email:api_key), comma-separated for multiple credentials for faster scraping (due to throttling by the NCBI)
--b [num]           Sets record fetching batch size, default: 50
+[SQ] Search Query Flags:  
+  
+-v                 Verbose mode  
+-o [filename]      Set output file (default: records.txt)  
+-j                 Output as JSON instead of plain text  
+-s [field]         Split output files by descriptor field (e.g., strain)  
+-c [cred_string]   Credentials (email:api_key), comma-separated for multiple credentials for faster scraping (due to throttling by the NCBI)  
+-b [num]           Sets record fetching batch size, default: 50  
 
-[DB] Database Query Commands:
-help               Show this help message
-exit               Exit the program
+[DB] Database Query Commands:  
+  
+help               Show this help message  
+exit               Exit the program  
 
-Search queries are based from NCBI's e-utilities or PubMed syntax (AND, NOT, OR). E.g:
-`Human papillomavirus AND (E6[Title] OR E7[Title]) NOT partial[Title]`
-`Gammapapillomavirus NOT (E1[Title] OR E7[Title])`
+Search queries are based from NCBI's e-utilities or PubMed syntax (AND, NOT, OR). E.g:  
+`Human papillomavirus AND (E6[Title] OR E7[Title]) NOT partial[Title]`  
+`Gammapapillomavirus NOT (E1[Title] OR E7[Title])`  
 
 | Operator | Function                                   |
 | -------- | ------------------------------------------ |
