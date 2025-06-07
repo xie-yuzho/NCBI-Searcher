@@ -2,11 +2,11 @@
 Get all records from https://www.ncbi.nlm.nih.gov with filters, flags, and special functions to make scraping the NCBI NLM databases easier.
 
 ## Features
-- Query NCBI databases using PubMed-style syntax
+- Query NCBI all databases using PubMed-style syntax
 - Output in plain text or JSON
 - Supports batching, field-based output splitting, and verbose mode
-- Use multiple API credentials to bypass throttling
-- Splitting file outputs by type (strain, gene, etc.)
+- Credential cycling to distribute requests across multiple API keys to optimize rate limits
+- Search Query can support Regular Expressions for more specific and advanced database searching.
 
 Search queries are based from NCBI's e-utilities or PubMed syntax (AND, NOT, OR). E.g:  
 `Human papillomavirus AND (E6[Title] OR E7[Title]) NOT partial[Title]`  
