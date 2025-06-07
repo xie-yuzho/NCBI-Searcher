@@ -92,6 +92,7 @@ def main():
                 -j                 Output as JSON instead of plain text
                 -s [field]         Split output files by descriptor field (e.g., strain)
                 -c [cred_string]   Credentials (email:api_key), comma-separated for multiple
+                -b [num]           Sets record fetching batch size, default: 50
 
                 [DB] Database Query Commands [You are here]:
                 help               Show this help message
@@ -210,7 +211,7 @@ def main():
                             if isinstance(key, list):
                                 key = "_".join(key)
                             safe_key = re.sub(r"[^\w\-\.]", "_", str(key))
-                            split_filename = f"{output_file.rsplit('.', 1)[0]}_{safe_key}" 
+                            split_filename = f"{output_file.rsplit('.', 1)[0]}_{safe_key}.{output_file.rsplit('.', 1)[1]}" 
                             if key not in split_files:
                                 split_files[key] = open(split_filename, "w")
                             out_fh = split_files[key]
