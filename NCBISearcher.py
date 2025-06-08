@@ -49,6 +49,26 @@ def parse_credentials(cred_string):
     # [(email:api_key) , (email2:api_key2)]
     # [(email , api_key) , (email2 , api_key2)]
 
+def extract_all_flags(query: str, flag: str) -> tuple[str, list[str]]:
+    """
+    Extracts all values for a specific flag (like -s) from the query string.
+    Returns the cleaned query string and a list of flag values.
+    """
+    parts = query.split()
+    values = []
+    cleaned_parts = []
+    skip = False
+    for i, part in enumerate(parts):
+        if skip:
+            skip = False
+            continue
+        if part == flag and i + 1 < len(parts):
+            values.append(parts[i + 1])
+            skip = True
+        else:
+            cleaned_parts.append(part)
+    return " ".join(cleaned_parts), values
+
 def clean_query_flags(query, flag):
     """
     Remove a flag (e.g., '-v') and its argument (if any) from the query string.
@@ -114,7 +134,8 @@ def main():
             if output_file_opt:
                 output_file = output_file_opt
 
-            query, split_field = clean_query_flags(query, "-s")
+            query, split_fields = extract_all_flags(query, "-s")
+
             query, verbose_mode = clean_query_flags(query, "-v")
             verbose_mode = bool(verbose_mode)
             query, json_mode = clean_query_flags(query, "-j")
@@ -135,8 +156,8 @@ def main():
                 if credentials:
                     print(f"[VERBOSE] Using {len(credentials)} credential(s) for API access.")
                 print(f"[VERBOSE] Output file: {output_file}")
-                if split_field:
-                    print(f"[VERBOSE] Splitting output files by field: {split_field}")
+                if split_fields:
+                    print(f"[VERBOSE] Splitting output files by fields: {', '.join(split_fields)}")
                 print(f"[VERBOSE] Output format: {'JSON' if json_mode else 'Plain text'}")
 
             # Set Entrez credentials from credential list (given from -c flag) if available
@@ -162,7 +183,7 @@ def main():
 
             # Open main output file if not splitting
             split_files = {}
-            with open(output_file, "w") if not split_field else dummy_context_manager() as main_fh:
+            with open(output_file, "w") if not split_fields else dummy_context_manager() as main_fh:
                 for batch_start in range(0, len(ids), batch_size):
                     try:
                         api_key, email = next(credential_cycle)
@@ -178,7 +199,7 @@ def main():
                         print(f"[VERBOSE] Fetching batch {batch_start // batch_size + 1}: {len(batch_ids)} records using credential: {email if Entrez.email else 'None'}")
 
                     fetch_handle = Entrez.efetch(db=db, id=",".join(batch_ids), rettype="gb", retmode="text")
-
+                    all_records = []
                     for record in SeqIO.parse(fetch_handle, "genbank"):
                         """
                         Gets all data of the record.
@@ -190,7 +211,9 @@ def main():
                         nameStrainMatch = re.match(r"(.+?) (\d+\w*)", organism)
                         name = nameStrainMatch.group(1) if nameStrainMatch else "Unknown"
                         strain = nameStrainMatch.group(2) if nameStrainMatch else "Unknown"
-
+                        LocusDate = record.annotations.get("date", "Unknown")
+                        date_obj = datetime.strptime(LocusDate, "%d-%b-%Y")
+                        mdy_format = date_obj.strftime("%b-%d-%Y")
                         genes = [f.qualifiers['gene'][0] for f in record.features if 'gene' in f.qualifiers]
 
                         metadata = {
@@ -203,20 +226,47 @@ def main():
                             "isolation_source": source_feature.qualifiers.get("isolation_source", ["Unknown"])[0] if source_feature else "Unknown",
                             "sequence": str(record.seq),
                             "genbank_url": gb_url,
+                            "date": LocusDate,
+                            "dateM": date_obj.strftime("%b"),
+                            "dateD": date_obj.strftime("%d"),
+                            "dateY": date_obj.strftime("%y"),
+
                         }
 
                         # Handle file splitting.
-                        if split_field:
-                            key = metadata.get(split_field, "Unknown")
-                            if isinstance(key, list):
-                                key = "_".join(key)
-                            safe_key = re.sub(r"[^\w\-\.]", "_", str(key))
-                            split_filename = f"{output_file.rsplit('.', 1)[0]}_{safe_key}.{output_file.rsplit('.', 1)[1]}" 
-                            if key not in split_files:
-                                split_files[key] = open(split_filename, "w")
-                            out_fh = split_files[key]
+                        if split_fields:
+                            split_key_parts = []
+                            for field in split_fields:
+                                value = metadata.get(field, "Unknown")
+                                if field.startswith("date") and value != "Unknown":
+                                    try:
+                                        dt = datetime.strptime(LocusDate, "%d-%b-%Y")
+                                        if field == "dateY":
+                                            value = str(dt.year)
+                                        elif field == "dateM":
+                                            value = f"{dt.year}-{dt.month:02d}"
+                                        elif field == "dateD":
+                                            value = dt.strftime("%Y-%m-%d")
+                                        else:
+                                            value = "UnknownDate"
+                                    except ValueError:
+                                        value = "InvalidDate"
+
+                                if isinstance(value, list):
+                                    value = "_".join(value)
+
+                                split_key_parts.append(str(value))
+
+                            safe_key = "__".join(split_key_parts)
+                            safe_key = re.sub(r"[^\w\-\.]", "_", safe_key)
+                            split_filename = f"{output_file.rsplit('.', 1)[0]}_{safe_key}.{output_file.rsplit('.', 1)[1]}"
+                            
+                            if safe_key not in split_files:
+                                split_files[safe_key] = open(split_filename, "w")
+                            out_fh = split_files[safe_key]
                         else:
                             out_fh = main_fh
+
 
                         # Write output.
                         if json_mode:
@@ -224,6 +274,7 @@ def main():
                             out_fh.write("\n")
                         else:
                             out_fh.write(f"(accession) Accession: {metadata['accession']}\n")
+                            out_fh.write(f"(date) Date: {metadata['date']}\n")
                             out_fh.write(f"(strain) Strain: {metadata['strain']}\n")
                             out_fh.write(f"(organism) Organism: {metadata['organism']}\n")
                             out_fh.write(f"(source) Isolation Source: {metadata['isolation_source']}\n")
