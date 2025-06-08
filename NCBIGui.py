@@ -47,10 +47,30 @@ def parse_credentials(cred_string):
     pairs = [p.strip() for p in cred_string.split(",")]
     return [tuple(p.split(":")) for p in pairs if ":" in p]
 
+def extract_all_flags(query: str, flag: str) -> tuple[str, list[str]]:
+    """
+    Extracts all values for a specific flag (like -s) from the query string.
+    Returns the cleaned query string and a list of flag values.
+    """
+    parts = query.split()
+    values = []
+    cleaned_parts = []
+    skip = False
+    for i, part in enumerate(parts):
+        if skip:
+            skip = False
+            continue
+        if part == flag and i + 1 < len(parts):
+            values.append(parts[i + 1])
+            skip = True
+        else:
+            cleaned_parts.append(part)
+    return " ".join(cleaned_parts), values
+
 def clean_query_flags(query, flag):
     pattern = None
     flag_value = None
-    if flag in ['-o', '-s', '-c', '-b']:
+    if flag in ['-o', '-c', '-b']:
         pattern = re.compile(rf"{flag}\s+([^\s]+)")
         match = pattern.search(query)
         if match:
@@ -122,62 +142,69 @@ class NCBIFetcherApp(tk.Tk):
         # Logic selectors
         inner_logic_var = tk.StringVar(value="OR")
         outer_logic_var = tk.StringVar(value="OR")
-        tk.Label(content_frame, text="Inner logic in each block:").pack(anchor="w", padx=15, pady=(10,0))
+        incl_logic_frame = tk.LabelFrame(content_frame, text="Inclusion logic", padx=10, pady=10)
+        incl_logic_frame.pack(fill="x", padx=10, pady=5)
+        tk.Label(incl_logic_frame, text="Inner logic in each block:").pack(anchor="w")
         for val in ("OR", "AND"):
-            tk.Radiobutton(content_frame, text=val, variable=inner_logic_var, value=val).pack(anchor="w", padx=20)
-        tk.Label(content_frame, text="Logic between blocks:").pack(anchor="w", padx=10, pady=(10,0))
+            tk.Radiobutton(incl_logic_frame, text=val, variable=inner_logic_var, value=val).pack(anchor="w", padx=10)
+
+        tk.Label(incl_logic_frame, text="Logic between blocks:").pack(anchor="w", pady=(10,0))
         for val in ("OR", "AND"):
-            tk.Radiobutton(content_frame, text=val, variable=outer_logic_var, value=val).pack(anchor="w", padx=20)
+            tk.Radiobutton(incl_logic_frame, text=val, variable=outer_logic_var, value=val).pack(anchor="w", padx=10)
 
         # Inclusion Block 1
-        tk.Label(content_frame, text="Must include block 1:").pack(anchor="w", padx=10, pady=(10,0))
-        include_frame1 = tk.Frame(content_frame)
-        include_frame1.pack(padx=10, fill="x")
+        include_block1 = tk.LabelFrame(content_frame, text="Must include block 1", padx=10, pady=10)
+        include_block1.pack(fill="x", padx=10, pady=5)
         include_entries1 = []
+
         def add_include1(text=""):
-            row = tk.Frame(include_frame1)
+            row = tk.Frame(include_block1)
             row.pack(fill="x", pady=2)
             e = tk.Entry(row, width=20)
             e.pack(side="left", padx=5)
             te = tk.Entry(row, width=20)
             te.pack(side="right", padx=5)
-            include_entries1.append((e,te))
-        add_include1()
-        tk.Button(content_frame, text="Add to block 1", command=add_include1).pack(pady=5)
+            include_entries1.append((e, te))
 
-        # Inclusion Block 2
-        tk.Label(content_frame, text="Must include block 2:").pack(anchor="w", padx=10, pady=(10,0))
-        include_frame2 = tk.Frame(content_frame)
-        include_frame2.pack(padx=10, fill="x")
+        add_include1()
+        tk.Button(include_block1, text="Add to block 1", command=add_include1).pack(pady=5)
+
+        include_block2 = tk.LabelFrame(content_frame, text="Must include block 2", padx=10, pady=10)
+        include_block2.pack(fill="x", padx=10, pady=5)
         include_entries2 = []
         def add_include2(text=""):
-            row = tk.Frame(include_frame2)
+            row = tk.Frame(include_block2)
             row.pack(fill="x", pady=2)
             e = tk.Entry(row, width=20)
             e.pack(side="left", padx=5)
             te = tk.Entry(row, width=20)
             te.pack(side="right", padx=5)
-            include_entries2.append((e,te))
+            include_entries2.append((e, te))
+
         add_include2()
-        tk.Button(content_frame, text="Add to block 2", command=add_include2).pack(pady=20)
+        tk.Button(include_block2, text="Add to block 2", command=add_include2).pack(pady=5)
 
         # Exclusion block 1
+        excl_logic_frame = tk.LabelFrame(content_frame, text="Exclusion logic", padx=10, pady=10)
+        excl_logic_frame.pack(fill="x", padx=10, pady=5)
+
         excl_inner_logic_var = tk.StringVar(value="OR")
         excl_outer_logic_var = tk.StringVar(value="OR")
-        tk.Label(content_frame, text="Inner logic in each block:").pack(anchor="w", padx=15, pady=(10,0))
-        for val in ("OR", "AND"):
-            tk.Radiobutton(content_frame, text=val, variable=excl_inner_logic_var, value=val).pack(anchor="w", padx=20)
-        tk.Label(content_frame, text="Logic between blocks:").pack(anchor="w", padx=10, pady=(10,0))
-        for val in ("OR", "AND"):
-            tk.Radiobutton(content_frame, text=val, variable=excl_outer_logic_var, value=val).pack(anchor="w", padx=20)
 
-        tk.Label(content_frame, text="Exclude block 1:").pack(anchor="w", padx=10, pady=(15,0))
-        exclude_frame1 = tk.Frame(content_frame)
-        exclude_frame1.pack(padx=10, fill="x")
+        tk.Label(excl_logic_frame, text="Inner logic in each block:").pack(anchor="w")
+        for val in ("OR", "AND"):
+            tk.Radiobutton(excl_logic_frame, text=val, variable=excl_inner_logic_var, value=val).pack(anchor="w", padx=10)
+
+        tk.Label(excl_logic_frame, text="Logic between blocks:").pack(anchor="w", pady=(10,0))
+        for val in ("OR", "AND"):
+            tk.Radiobutton(excl_logic_frame, text=val, variable=excl_outer_logic_var, value=val).pack(anchor="w", padx=10)
+
+        exclude_block1 = tk.LabelFrame(content_frame, text="Exclude block 1", padx=10, pady=10)
+        exclude_block1.pack(fill="x", padx=10, pady=5)
         exclude_entries1 = []
 
         def add_exclude1(term="", typ=""):
-            row = tk.Frame(exclude_frame1)
+            row = tk.Frame(exclude_block1)
             row.pack(fill="x", pady=2)
             term_e = tk.Entry(row, width=20)
             term_e.insert(0, term)
@@ -188,16 +215,14 @@ class NCBIFetcherApp(tk.Tk):
             exclude_entries1.append((term_e, type_e))
 
         add_exclude1()
-        tk.Button(content_frame, text="Add to exclude block 1", command=add_exclude1).pack(pady=5)
+        tk.Button(exclude_block1, text="Add to exclude block 1", command=add_exclude1).pack(pady=5)
 
-        # Exclusion block 2
-        tk.Label(content_frame, text="Exclude block 2:").pack(anchor="w", padx=10, pady=(10,0))
-        exclude_frame2 = tk.Frame(content_frame)
-        exclude_frame2.pack(padx=10, fill="x")
+        exclude_block2 = tk.LabelFrame(content_frame, text="Exclude block 2", padx=10, pady=10)
+        exclude_block2.pack(fill="x", padx=10, pady=5)
         exclude_entries2 = []
 
         def add_exclude2(term="", typ=""):
-            row = tk.Frame(exclude_frame2)
+            row = tk.Frame(exclude_block2)
             row.pack(fill="x", pady=2)
             term_e = tk.Entry(row, width=20)
             term_e.insert(0, term)
@@ -208,14 +233,16 @@ class NCBIFetcherApp(tk.Tk):
             exclude_entries2.append((term_e, type_e))
 
         add_exclude2()
-        tk.Button(content_frame, text="Add to exclude block 2", command=add_exclude2).pack(pady=5)
+        tk.Button(exclude_block2, text="Add to exclude block 2", command=add_exclude2).pack(pady=5)
+
 
         # Flags etc.
         # This is very hurtful to look at.
-        flags = { '-o': {'label':'Output file (-o)', 'var':tk.StringVar()},
-                  '-s': {'label':'Split field (-s)','var':tk.StringVar()},
-                  '-b': {'label':'Batch size (-b)','var':tk.StringVar()},
-                  '-c': {'label':'Credentials (-c)','var':tk.StringVar()} }
+        flags = {
+            '-o': {'label': 'Output file (-o)', 'var': tk.StringVar()},
+            '-b': {'label': 'Batch size (-b)', 'var': tk.StringVar()},
+            '-c': {'label': 'Credentials (-c)', 'var': tk.StringVar()}
+        }
         bool_flags = {'-j':{'label':'JSON mode (-j)','var':tk.BooleanVar()} }
         vf_frame = tk.LabelFrame(content_frame, text="Value flags", padx=10, pady=10)
         vf_frame.pack(fill="x", padx=10, pady=5)
@@ -228,6 +255,20 @@ class NCBIFetcherApp(tk.Tk):
         bf_frame.pack(fill="x", padx=10, pady=5)
         for f,info in bool_flags.items():
             tk.Checkbutton(bf_frame,text=info['label'],variable=info['var']).pack(anchor='w')
+        split_fields_frame = tk.LabelFrame(content_frame, text="Split fields (-s)", padx=10, pady=10)
+        split_fields_frame.pack(fill="x", padx=10, pady=5)
+        split_field_entries = []
+
+        def add_split_field(val=""):
+            row = tk.Frame(split_fields_frame)
+            row.pack(fill="x", pady=2)
+            e = tk.Entry(row, width=40)
+            e.insert(0, val)
+            e.pack(side="left", padx=5)
+            split_field_entries.append(e)
+
+        add_split_field()  # add at least one initially
+        tk.Button(split_fields_frame, text="Additional Field", command=add_split_field).pack(pady=5)
 
         def apply_query():
             main_term = main_term_entry.get().strip()
@@ -291,7 +332,12 @@ class NCBIFetcherApp(tk.Tk):
             for f,info in flags.items():
                 v = info['var'].get().strip()
                 if v: query_parts += [f,v]
-
+            split_fields = [e.get().strip() for e in split_field_entries if e.get().strip()]
+            if split_fields:
+                # If you're building a list of args or a command
+                for field in split_fields:
+                    query_parts.append("-s")
+                    query_parts.append(field)
             final = " ".join(query_parts)
             self.query_entry.delete(0,tk.END)
             self.query_entry.insert(0,final)
@@ -351,7 +397,7 @@ class NCBIFetcherApp(tk.Tk):
             # Default settings
             output_file = "records.txt"
             total_count = 0
-            split_field = None
+            split_fields = None
             verbose_mode = True  # For GUI, verbose will be on.
             json_mode = False
             batch_size = 50
@@ -363,7 +409,7 @@ class NCBIFetcherApp(tk.Tk):
             if output_file_opt:
                 output_file = output_file_opt
 
-            query, split_field = clean_query_flags(query, "-s")
+            query, split_fields = extract_all_flags(query, "-s")
             query, verbose_mode_flag = clean_query_flags(query, "-v")
             verbose_mode = verbose_mode_flag or verbose_mode
             query, json_mode_flag = clean_query_flags(query, "-j")
@@ -380,8 +426,8 @@ class NCBIFetcherApp(tk.Tk):
                 if credentials:
                     self.log(f"[VERBOSE] Using {len(credentials)} credential(s) for API access.")
                 self.log(f"[VERBOSE] Output file: {output_file}")
-                if split_field:
-                    self.log(f"[VERBOSE] Splitting output files by field: {split_field}")
+                if split_fields:
+                    self.log(f"[VERBOSE] Splitting output files by fields: {', '.join(split_fields)}")
                 self.log(f"[VERBOSE] Output format: {'JSON' if json_mode else 'Plain text'}")
 
             try:
@@ -405,7 +451,7 @@ class NCBIFetcherApp(tk.Tk):
                 return
 
             split_files = {}
-            with open(output_file, "w") if not split_field else dummy_context_manager() as main_fh:
+            with open(output_file, "w") if not split_fields else dummy_context_manager() as main_fh:
                 for batch_start in range(0, len(ids), batch_size):
                     # Check if stop requested
                     if self.stop_event.is_set():
@@ -439,6 +485,9 @@ class NCBIFetcherApp(tk.Tk):
                     fetch_handle = Entrez.efetch(db=db, id=",".join(batch_ids), rettype="gb", retmode="text")
 
                     for record in SeqIO.parse(fetch_handle, "genbank"):
+                        """
+                        Gets all data of the record.
+                        """
                         source_feature = next((f for f in record.features if f.type == "source"), None)
                         gb_url = f"https://www.ncbi.nlm.nih.gov/{db}/{record.id}"
 
@@ -446,7 +495,9 @@ class NCBIFetcherApp(tk.Tk):
                         nameStrainMatch = re.match(r"(.+?) (\d+\w*)", organism)
                         name = nameStrainMatch.group(1) if nameStrainMatch else "Unknown"
                         strain = nameStrainMatch.group(2) if nameStrainMatch else "Unknown"
-
+                        LocusDate = record.annotations.get("date", "Unknown")
+                        date_obj = datetime.strptime(LocusDate, "%d-%b-%Y")
+                        mdy_format = date_obj.strftime("%b-%d-%Y")
                         genes = [f.qualifiers['gene'][0] for f in record.features if 'gene' in f.qualifiers]
 
                         metadata = {
@@ -459,25 +510,55 @@ class NCBIFetcherApp(tk.Tk):
                             "isolation_source": source_feature.qualifiers.get("isolation_source", ["Unknown"])[0] if source_feature else "Unknown",
                             "sequence": str(record.seq),
                             "genbank_url": gb_url,
+                            "date": LocusDate,
+                            "dateM": date_obj.strftime("%b"),
+                            "dateD": date_obj.strftime("%d"),
+                            "dateY": date_obj.strftime("%y"),
+
                         }
 
-                        if split_field:
-                            key = metadata.get(split_field, "Unknown")
-                            if isinstance(key, list):
-                                key = "_".join(key)
-                            safe_key = re.sub(r"[^\w\-\.]", "_", str(key))
-                            split_filename = f"{output_file.rsplit('.', 1)[0]}_{safe_key}.{output_file.rsplit('.', 1)[1]}" 
-                            if key not in split_files:
-                                split_files[key] = open(split_filename, "w")
-                            out_fh = split_files[key]
+                        # Handle file splitting.
+                        if split_fields:
+                            split_key_parts = []
+                            for field in split_fields:
+                                value = metadata.get(field, "Unknown")
+                                if field.startswith("date") and value != "Unknown":
+                                    try:
+                                        dt = datetime.strptime(LocusDate, "%d-%b-%Y")
+                                        if field == "dateY":
+                                            value = str(dt.year)
+                                        elif field == "dateM":
+                                            value = f"{dt.year}-{dt.month:02d}"
+                                        elif field == "dateD":
+                                            value = dt.strftime("%Y-%m-%d")
+                                        else:
+                                            value = "UnknownDate"
+                                    except ValueError:
+                                        value = "InvalidDate"
+
+                                if isinstance(value, list):
+                                    value = "_".join(value)
+
+                                split_key_parts.append(str(value))
+
+                            safe_key = "__".join(split_key_parts)
+                            safe_key = re.sub(r"[^\w\-\.]", "_", safe_key)
+                            split_filename = f"{output_file.rsplit('.', 1)[0]}_{safe_key}.{output_file.rsplit('.', 1)[1]}"
+                            
+                            if safe_key not in split_files:
+                                split_files[safe_key] = open(split_filename, "w")
+                            out_fh = split_files[safe_key]
                         else:
                             out_fh = main_fh
 
+
+                        # Write output.
                         if json_mode:
-                            json.dump(metadata, out_fh, indent=4)
+                            json.dump(metadata, out_fh, indent=4) # Dump 'metadata' (list) as json into out_fh.
                             out_fh.write("\n")
                         else:
                             out_fh.write(f"(accession) Accession: {metadata['accession']}\n")
+                            out_fh.write(f"(date) Date: {metadata['date']}\n")
                             out_fh.write(f"(strain) Strain: {metadata['strain']}\n")
                             out_fh.write(f"(organism) Organism: {metadata['organism']}\n")
                             out_fh.write(f"(source) Isolation Source: {metadata['isolation_source']}\n")
@@ -489,7 +570,7 @@ class NCBIFetcherApp(tk.Tk):
                             out_fh.write("\n" + "="*40 + "\n\n")
 
                         total_count += 1
-
+                        
                         self.log(f"Wrote record {total_count} of {len(ids)}: {metadata['accession']}")
 
             for fh in split_files.values():
