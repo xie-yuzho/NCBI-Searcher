@@ -7,6 +7,7 @@ Get all records from https://www.ncbi.nlm.nih.gov with filters, flags, and speci
 - Supports batching, field-based output splitting, and verbose mode
 - Credential cycling to distribute requests across multiple API keys to optimize rate limits
 - Search Query can support Regular Expressions for more specific and advanced database searching.
+- GUI Version to build queries if you are not familiar with the syntax.
 
 Search queries are based from NCBI's e-utilities or PubMed syntax (AND, NOT, OR). E.g:  
 `Human papillomavirus AND (E6[Title] OR E7[Title]) NOT partial[Title] -v -o HPVRecords.txt -s strain`  
